@@ -1,0 +1,12 @@
+/*
+ * This file has been created by the Vaadin Theme Editor. Please note that
+ * manual changes to individual CSS properties may be overwritten by the theme editor.
+ */
+vaadin-email-field.login-view-email-field-1::part(input-field) { border-width:0px; }
+
+.generator, .app, .data_model , .code_provider, .hidden_model_property, .model_property {
+
+  box-shadow: 0 3px 10px rgb(0 0 0 / 0.2);
+  padding-left:15px;
+  padding-top:15px;
+}

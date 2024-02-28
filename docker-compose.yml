@@ -1,0 +1,14 @@
+version: '3'
+
+services:
+  my_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+
+    ports:
+      - "8851:8850"
+    volumes:
+      - ./host_folder:/mnt/host_folder
+      - C:\Users\progr\dev\flutter_linux_3.19.1-stable\flutter:/mnt/flutter
