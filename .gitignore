@@ -22,3 +22,4 @@ webpack.generated.js
 /src/main/dev-bundle/webapp/VAADIN/build/
 
 /host_folder/rx_bloc_cli_wrapper_web_app-1.0-SNAPSHOT.jar
+/src/main/bundles/

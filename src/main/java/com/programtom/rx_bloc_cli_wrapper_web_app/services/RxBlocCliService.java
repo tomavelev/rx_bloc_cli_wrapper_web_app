@@ -3,23 +3,30 @@ package com.programtom.rx_bloc_cli_wrapper_web_app.services;
 import com.programtom.rx_bloc_cli_wrapper_web_app.models.CiCd;
 import com.programtom.rx_bloc_cli_wrapper_web_app.models.Project;
 import com.programtom.rx_bloc_cli_wrapper_web_app.models.RealTimeCommunication;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.*;
 
 @Service
 public class RxBlocCliService {
 
+    @Value("${building_directory}")
+    private String buildingDirectory;
 
-    public void create(Project project) {
-        File file = new File("/mnt/host_folder/", project.getProjectName());
+    @Value("${flutter_directory}")
+    private String flutterDirectory;
+
+    public File create(Project project) {
+
+        File file = new File(buildingDirectory, project.getProjectName());
         file.mkdirs();
-//
-        List<String> commands = new ArrayList<>(Arrays.asList("/root/.pub-cache/bin/rx_bloc_cli", "create", "."
+
+        List<String> commands = new ArrayList<>(Arrays.asList("rx_bloc_cli", "create", "."
                 , "--project-name ", project.getProjectName()
                 , "--organisation ", project.getOrganisation()));
 
@@ -40,59 +47,51 @@ public class RxBlocCliService {
         commands.add(("--" + (project.isChangeLanguage() ? "" : "no-") + "enable-change-language"));
 
         commands.add("--no-interactive");
-//
-//        StringBuilder sb = new StringBuilder();
-//        sb.append("/root/.pub-cache/bin/rx_bloc_cli create . --project-name " + project.getProjectName() + " --organisation " + project.getOrganisation());
-//
-//
-//         sb.append("--" + (project.isAnalytics() ? "" : "no-") + "enable-analytics ");
-//         sb.append(("--" + (project.isCounterExample() ? "" : "no-") + "enable-feature-counter "));
-//         sb.append(("--" + (project.isDeeplinksExample() ? "" : "no-") + "enable-feature-deeplinks "));
-//         sb.append(("--" + (project.isWidgetToolkitExample() ? "" : "no-") + "enable-feature-widget-toolkit "));
-//         sb.append(("--" + (project.isCustomLogin() ? "" : "no-") + "enable-login "));
-//         sb.append(("--" + (project.isSocialLogins() ? "" : "no-") + "enable-social-logins "));
-//         sb.append(("--" + (project.isAuthMatrix() ? "" : "no-") + "enable-auth-matrix "));
-//         sb.append(("--" + (project.isPinCode() ? "" : "no-") + "enable-pin-code "));
-//         sb.append(("--" + (project.isOtp() ? "" : "no-") + "enable-otp "));
-//         sb.append(("--" + (project.isDevMenu() ? "" : "no-") + "enable-dev-menu "));
-//         sb.append(("--realtime-communication "+ RealTimeCommunication.values()[(project.getRealtimeCommunication())].name())).append(" ");
-//         sb.append(("--cicd "+ CiCd.values()[(project.getCiCd())].name())).append(" ");
-////
-//         sb.append(("--" + (project.isPatrol() ? "" : "no-") + "enable-patrol "));
-//         sb.append(("--" + (project.isChangeLanguage() ? "" : "no-") + "enable-change-language "));
-////
-//         sb.append("--no-interactive");
-//
-//
-        ProcessBuilder pb = new ProcessBuilder(commands);
-        System.out.println(pb.command());
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append("export PATH=");
+        stringBuffer.append(flutterDirectory);
+        stringBuffer.append(":$PATH\n");
+        stringBuffer.append("export PATH=\"$PATH\":\"$HOME/.pub-cache/bin\"");
+        stringBuffer.append("\n");
+
+        stringBuffer.append("zip -r ").append(project.getProjectName()).append(".zip .\n");
+        commands.forEach(x->{
+            stringBuffer.append(x).append(" ");
+        });
+        File f = new File(file,"createCommand.sh");
+        try {
+            f.createNewFile();
+
+            Set<PosixFilePermission> perms = new HashSet<>();
+            perms.add(PosixFilePermission.OWNER_READ);
+            perms.add(PosixFilePermission.OWNER_WRITE);
+            perms.add(PosixFilePermission.OWNER_EXECUTE);
+            Files.setPosixFilePermissions(f.toPath(), perms);
+
+            Files.writeString(f.toPath(), stringBuffer.toString(), StandardOpenOption.TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        ProcessBuilder pb = new ProcessBuilder("sh","createCommand.sh");
         pb.directory(file);
         pb.inheritIO();
 
         try {
             Process exec = pb.start();
-
-
-//            Thread t = new Thread(() -> {
-//                try (Reader reader = new BufferedReader(new InputStreamReader
-//                        (exec.getInputStream(), StandardCharsets.UTF_8))) {
-//                    int c = 0;
-//                    while ((c = reader.read()) != -1) {
-//                        writer.write(String.valueOf((char) c));
-//                    }
-//                } catch (IOException e) {
-//                    throw new RuntimeException(e);
-//                }
-//
-//            });
-//            t.setDaemon(true);
-//            t.start();
-            int waitFor = exec.waitFor();
-//            int waitFor = exec.waitFor();
-            System.out.println("waitFor : " + waitFor);
-        } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
+            int exitCode = exec.waitFor();
+            if(exitCode == 0) {
+                return new File(file, project.getProjectName()+".zip");
+            }
+        }catch (Exception e) {
+            e.printStackTrace();
         }
+        return null;
+    }
 
+    public File build(Project project) {
+        File file = new File(buildingDirectory, project.getProjectName());
+        return new File(file, project.getProjectName()+".zip");
     }
 }

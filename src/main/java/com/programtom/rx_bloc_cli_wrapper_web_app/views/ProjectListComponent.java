@@ -6,14 +6,18 @@ import com.programtom.rx_bloc_cli_wrapper_web_app.models.QueryResult;
 import com.programtom.rx_bloc_cli_wrapper_web_app.services.ProjectService;
 import com.programtom.rx_bloc_cli_wrapper_web_app.services.RxBlocCliService;
 import com.programtom.rx_bloc_cli_wrapper_web_app.utils.SpringContext;
-import com.vaadin.flow.component.ClickEvent;
-import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.ComponentEventListener;
-import com.vaadin.flow.component.Text;
+import com.vaadin.flow.component.*;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.server.StreamResource;
+import com.vaadin.flow.server.frontend.installer.DefaultFileDownloader;
+import org.vaadin.olli.FileDownloadWrapper;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 
 @Route(value = "project")
 @PageTitle("Project List")
@@ -57,13 +61,32 @@ public class ProjectListComponent extends BaseListComponent<Project> {
     @Override
     protected Component item(Project project) {
         VerticalLayout objectActions = objectActions(project);
+        RxBlocCliService rxBlocCliService = SpringContext.getBean(RxBlocCliService.class);
+
         Button create = new Button("Create", (ComponentEventListener<ClickEvent<Button>>) buttonClickEvent -> {
-            RxBlocCliService rxBlocCliService = SpringContext.getBean(RxBlocCliService.class);
             output.setText("");
-//            , s -> output.setText(output.getText() + s)
-            rxBlocCliService.create(project);
+          File file = rxBlocCliService.create(project);
+          if(file != null) {
+              UI.getCurrent().getPage().reload();
+          }
         });
         objectActions.add(create);
+
+        File build = rxBlocCliService.build(project);
+        if(build.exists()) {
+            Button button = new Button("Download " + project.getProjectName());
+
+            FileDownloadWrapper wrapper = new FileDownloadWrapper(
+                    new StreamResource(build.getName(), () -> {
+                        try {
+                            return new FileInputStream(build);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }));
+            wrapper.wrapComponent(button);
+            objectActions.add(wrapper);
+        }
         return new ProjectListItem(project, objectActions);
     }
 
